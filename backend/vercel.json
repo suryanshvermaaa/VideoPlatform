@@ -2,12 +2,31 @@
 	"version": 2,
 	"builds": [
 		{
-			"src": "src/index.ts",
+			"src": "package.json",
 			"use": "@vercel/node",
 			"config": {
-				"includeFiles": ["prisma/**", "prisma/**"]
+				"includeFiles": [
+					"dist/**",
+					"prisma/**",
+					"node_modules/.prisma/**"
+				],
+				"excludeFiles": [
+					".env.example",
+					"tsconfig.json",
+					"src/**"
+				]
 			}
 		}
 	],
-	"routes": [{ "src": "/(.*)", "dest": "/src/index.ts" }]
+	"routes": [
+		{
+			"src": "/(.*)",
+			"dest": "dist/server.js"
+		}
+	],
+	"env": {
+		"DATABASE_URL": "@database_url",
+		"JWT_ACCESS_SECRET": "@jwt_access_secret",
+		"JWT_REFRESH_SECRET": "@jwt_refresh_secret"
+	}
 }
