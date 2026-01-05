@@ -8,32 +8,27 @@ export default function HomePage() {
       <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
         <div>
           <div className="inline-flex items-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-1 text-xs text-[hsl(var(--muted-fg))]">
-            Private video courses with secure access
+            Learn with secure video access
           </div>
 
           <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Sell and deliver video courses with admin control.
+            Watch video courses, track progress, and download resources.
           </h1>
           <p className="mt-3 max-w-prose text-[hsl(var(--muted-fg))]">
-            Users sign up, purchase a course, and watch videos via short-lived signed URLs. Admins upload content and grant
-            access. Progress is saved automatically.
+            Create an account, purchase a course, and start learning instantly. Videos stream via short-lived signed URLs,
+            and your progress is saved automatically.
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Link href="/courses">
+              <Button>Browse courses</Button>
+            </Link>
             <Link href="/signup">
-              <Button>Create account</Button>
+              <Button variant="ghost">Create account</Button>
             </Link>
             <Link href="/login">
               <Button variant="ghost">Sign in</Button>
             </Link>
-          </div>
-
-          <div className="mt-6 text-sm text-[hsl(var(--muted-fg))]">
-            Admin?{' '}
-            <Link className="underline" href="/login">
-              Sign in
-            </Link>{' '}
-            to manage courses.
           </div>
         </div>
 
@@ -50,12 +45,12 @@ export default function HomePage() {
                   desc: 'Videos stay private in S3/R2/MinIO with signed URLs for playback.'
                 },
                 {
-                  title: 'Per-course purchases',
-                  desc: 'Cashfree checkout with webhook confirmation and coupon support.'
+                  title: 'Per-course access',
+                  desc: 'Purchase a course once and unlock all lectures.'
                 },
                 {
-                  title: 'Admin-first controls',
-                  desc: 'Create courses/lectures, upload videos, and grant access to users.'
+                  title: 'Notes and resources',
+                  desc: 'Download assignments/resources and view lecture notes while watching.'
                 },
                 {
                   title: 'Progress tracking',
@@ -86,18 +81,18 @@ export default function HomePage() {
         </Card>
         <Card>
           <CardHeader>
-            <div className="text-sm font-semibold">Manage</div>
+            <div className="text-sm font-semibold">Resume</div>
           </CardHeader>
           <CardBody>
-            <div className="text-sm text-[hsl(var(--muted-fg))]">Admin dashboard for users, courses, lectures, and uploads.</div>
+            <div className="text-sm text-[hsl(var(--muted-fg))]">Pick up where you left off with saved playback progress.</div>
           </CardBody>
         </Card>
         <Card>
           <CardHeader>
-            <div className="text-sm font-semibold">Scale</div>
+            <div className="text-sm font-semibold">Resources</div>
           </CardHeader>
           <CardBody>
-            <div className="text-sm text-[hsl(var(--muted-fg))]">Bulk upload lectures from a folder using the backend script.</div>
+            <div className="text-sm text-[hsl(var(--muted-fg))]">Access lecture attachments and notes when available.</div>
           </CardBody>
         </Card>
       </div>
