@@ -23,10 +23,5 @@
 			"src": "/(.*)",
 			"dest": "dist/server.js"
 		}
-	],
-	"env": {
-		"DATABASE_URL": "@database_url",
-		"JWT_ACCESS_SECRET": "@jwt_access_secret",
-		"JWT_REFRESH_SECRET": "@jwt_refresh_secret"
-	}
+	]
 }
