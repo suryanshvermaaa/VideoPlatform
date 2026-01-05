@@ -78,6 +78,10 @@ app.use('/courses', requireAuth, userCoursesRouter);
 app.use('/lectures', requireAuth, requireActivePlan, userLecturesRouter);
 app.use('/attachments', requireAuth, userAttachmentsRouter);
 
+app.get("/",(req: express.Request,res: express.Response)=>{
+  res.status(200).json({message:"server is healty"});
+});
+
 app.use((_req, res) => {
   res.status(404).json({ message: 'Not found' });
 });
