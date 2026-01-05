@@ -34,7 +34,14 @@ router.get(
     });
 
     res.json({
-      lecture: { id: lecture.id, courseId: lecture.courseId, title: lecture.title, description: lecture.description, orderIndex: lecture.orderIndex },
+      lecture: {
+        id: lecture.id,
+        courseId: lecture.courseId,
+        title: lecture.title,
+        description: lecture.description,
+        notesMd: lecture.notesMd,
+        orderIndex: lecture.orderIndex
+      },
       progress: progress ?? { progressPct: 0, updatedAt: null }
     });
   })

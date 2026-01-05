@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Card, CardBody, CardHeader, Skeleton } from '@/components/ui';
 
-type Lecture = { id: string; courseId: string; title: string; description: string; orderIndex: number };
+type Lecture = { id: string; courseId: string; title: string; description: string; notesMd?: string | null; orderIndex: number };
 
 type LectureResponse = {
   lecture: Lecture;
@@ -257,6 +257,15 @@ export default function WatchClient({ params }: { params: Promise<{ courseId: st
             <div className="prose prose-sm mt-2 max-w-none text-[hsl(var(--muted-fg))] dark:prose-invert">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{lecture.lecture.description}</ReactMarkdown>
             </div>
+
+            {lecture.lecture.notesMd ? (
+              <div className="mt-4">
+                <div className="text-sm font-semibold">Notes</div>
+                <div className="prose prose-sm mt-2 max-w-none dark:prose-invert">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{lecture.lecture.notesMd}</ReactMarkdown>
+                </div>
+              </div>
+            ) : null}
           </div>
           </CardBody>
         </Card>

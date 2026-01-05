@@ -63,6 +63,9 @@ export default function CoursesAdminClient() {
   const [orderIndex, setOrderIndex] = useState(0);
   const [videoFile, setVideoFile] = useState<File | null>(null);
 
+  const [notesLectureId, setNotesLectureId] = useState('');
+  const [notesMd, setNotesMd] = useState('');
+
   const [courseAttachments, setCourseAttachments] = useState<Attachment[] | null>(null);
   const [lectureAttachments, setLectureAttachments] = useState<Attachment[] | null>(null);
   const [attTitle, setAttTitle] = useState('');
@@ -139,6 +142,8 @@ export default function CoursesAdminClient() {
       setCourseAttachments(null);
       setLectureAttachments(null);
       setAttLectureId('');
+      setNotesLectureId('');
+      setNotesMd('');
       return;
     }
     loadCourse(selectedId).catch(() => setDetail(null));
@@ -435,6 +440,26 @@ export default function CoursesAdminClient() {
     }
   }
 
+  async function saveLectureNotes(e: React.FormEvent) {
+    e.preventDefault();
+    if (!notesLectureId) return;
+
+    setError(null);
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/admin/lectures/${notesLectureId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ notesMd: notesMd.trim() ? notesMd : null })
+      });
+      if (!r.ok) throw new Error('Failed to save notes');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
       <div className="space-y-4">
@@ -717,6 +742,44 @@ export default function CoursesAdminClient() {
                       ))}
                   </div>
                 )}
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="font-semibold">Lecture notes</div>
+                <div className="mt-1 text-sm text-[hsl(var(--muted-fg))]">Markdown notes shown on the watch page for that lecture.</div>
+              </CardHeader>
+              <CardBody>
+                <form onSubmit={saveLectureNotes} className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-sm">Lecture</label>
+                    <select
+                      className="w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-sm"
+                      value={notesLectureId}
+                      onChange={(e) => setNotesLectureId(e.target.value)}
+                    >
+                      <option value="">Select lecture…</option>
+                      {detail.lectures
+                        .slice()
+                        .sort((a, b) => a.orderIndex - b.orderIndex)
+                        .map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.orderIndex}. {l.title}
+                          </option>
+                        ))}
+                    </select>
+                    <div className="mt-1 text-xs text-[hsl(var(--muted-fg))]">Notes are saved per lecture.</div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm">Notes (Markdown)</label>
+                    <Textarea value={notesMd} onChange={(e) => setNotesMd(e.target.value)} rows={6} placeholder="### Key points\n- ..." />
+                  </div>
+                  {error ? <div className="text-sm text-red-600">{error}</div> : null}
+                  <Button disabled={busy || !notesLectureId} className="w-full sm:w-auto">
+                    {busy ? 'Saving…' : 'Save notes'}
+                  </Button>
+                </form>
               </CardBody>
             </Card>
 
