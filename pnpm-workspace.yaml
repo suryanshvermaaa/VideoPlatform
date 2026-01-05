@@ -1,0 +1,8 @@
+packages:
+  - backend
+  - frontend
+
+ignoredBuiltDependencies:
+  - '@prisma/engines'
+  - esbuild
+  - prisma
