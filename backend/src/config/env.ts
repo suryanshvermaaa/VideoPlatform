@@ -16,7 +16,7 @@ export const env = {
   ACCESS_TOKEN_TTL_SECONDS: process.env.ACCESS_TOKEN_TTL_SECONDS ? Number(process.env.ACCESS_TOKEN_TTL_SECONDS) : 3600,
   REFRESH_TOKEN_TTL_SECONDS: process.env.REFRESH_TOKEN_TTL_SECONDS ? Number(process.env.REFRESH_TOKEN_TTL_SECONDS) : 86400,
 
-  COOKIE_SECURE: process.env.COOKIE_SECURE === 'true',
+  COOKIE_SECURE: process.env.COOKIE_SECURE === 'true' ? true : false,
   COOKIE_DOMAIN: process.env.COOKIE_DOMAIN || 'localhost',
 
   // Generic S3-compatible storage (recommended). If set, these take precedence.
@@ -25,7 +25,7 @@ export const env = {
   S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID || '', 
   S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY || '',
   S3_BUCKET_NAME: process.env.S3_BUCKET_NAME || '', 
-  S3_FORCE_PATH_STYLE: process.env.S3_FORCE_PATH_STYLE!,
+  S3_FORCE_PATH_STYLE: process.env.S3_FORCE_PATH_STYLE =='true'?true:false,
 
   // Cloudflare R2 legacy env vars (still supported).
   R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || '',
@@ -35,7 +35,7 @@ export const env = {
   R2_REGION: process.env.R2_REGION || 'us-east-1',
   R2_PUBLIC_BASE_URL: process.env.R2_PUBLIC_BASE_URL || '',
   R2_ENDPOINT: process.env.R2_ENDPOINT || '',
-  R2_FORCE_PATH_STYLE: process.env.R2_FORCE_PATH_STYLE!,
+  R2_FORCE_PATH_STYLE: process.env.R2_FORCE_PATH_STYLE =='true'?true:false,
 
   // Used to encrypt secrets for dynamically added storage providers.
   // Recommended: a long random string (will be hashed to a 32-byte key).
