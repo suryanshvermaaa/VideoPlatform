@@ -9,7 +9,7 @@ import { Button, Card, CardBody, CardHeader, Input, Skeleton } from '@/component
 
 type Lecture = { id: string; title: string; description: string; orderIndex: number };
 type Course = { id: string; title: string; description: string; lectures?: Lecture[]; priceInrPaise: number };
-type ApiError = { message?: string; code?: string };
+type ApiError = { message?: string; code?: string; issues?: Array<{ path: Array<string | number>; message: string }> };
 
 type Attachment = { id: string; title: string; mimeType: string; sizeBytes?: number | null; createdAt: string };
 
@@ -105,9 +105,16 @@ export default function CourseClient({ params }: { params: Promise<{ courseId: s
       const data = (await r.json().catch(() => null)) as
         | { assigned: true; free: true }
         | { cashfree: { paymentSessionId: string; mode: 'sandbox' | 'production' }; payment: { providerOrderId: string } }
-        | { message?: string };
+        | { message?: string; issues?: Array<{ path: Array<string | number>; message: string }> };
 
       if (!r.ok) {
+        const issues = (data as any)?.issues as Array<{ path: Array<string | number>; message: string }> | undefined;
+        if (issues && issues.length) {
+          const msg = issues
+            .map((i) => `${i.path?.length ? i.path.join('.') : 'body'}: ${i.message}`)
+            .join(' | ');
+          throw new Error(msg);
+        }
         throw new Error((data as any)?.message ?? 'Failed to start payment');
       }
 

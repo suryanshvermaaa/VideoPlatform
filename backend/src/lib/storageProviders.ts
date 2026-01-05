@@ -1,6 +1,7 @@
 import { prisma } from './prisma.js';
 import { env } from '../config/env.js';
 import { decryptSecret } from './cryptoSecret.js';
+import { getStorageProvidersEncKeyMaterial } from './storageProvidersEncKey.js';
 import { HttpError } from '../utils/errors.js';
 
 export type StorageProviderConfig = {
@@ -53,11 +54,7 @@ export async function getStorageProviderConfig(providerId?: string | null): Prom
     if (!p) throw new HttpError(404, 'Storage provider not found');
     if (!p.active) throw new HttpError(400, 'Storage provider is inactive');
 
-    if (!env.STORAGE_PROVIDERS_ENC_KEY) {
-      throw new HttpError(500, 'STORAGE_PROVIDERS_ENC_KEY is not set (required for dynamic storage providers)');
-    }
-
-    const secretAccessKey = decryptSecret(p.secretEnc, env.STORAGE_PROVIDERS_ENC_KEY);
+    const secretAccessKey = decryptSecret(p.secretEnc, getStorageProvidersEncKeyMaterial());
 
     return {
       id: p.id,
@@ -74,10 +71,7 @@ export async function getStorageProviderConfig(providerId?: string | null): Prom
   // If no providerId is specified, prefer the DB default provider (if any), otherwise fall back to env.
   const dbDefault = await prisma.storageProvider.findFirst({ where: { isDefault: true, active: true } });
   if (dbDefault) {
-    if (!env.STORAGE_PROVIDERS_ENC_KEY) {
-      throw new HttpError(500, 'STORAGE_PROVIDERS_ENC_KEY is not set (required for dynamic storage providers)');
-    }
-    const secretAccessKey = decryptSecret(dbDefault.secretEnc, env.STORAGE_PROVIDERS_ENC_KEY);
+    const secretAccessKey = decryptSecret(dbDefault.secretEnc, getStorageProvidersEncKeyMaterial());
     return {
       id: dbDefault.id,
       name: dbDefault.name,

@@ -6,7 +6,16 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Card, CardBody, CardHeader, Skeleton } from '@/components/ui';
 
-type Lecture = { id: string; courseId: string; title: string; description: string; notesMd?: string | null; orderIndex: number };
+type Lecture = {
+  id: string;
+  courseId: string;
+  title: string;
+  description: string;
+  notesMd?: string | null;
+  notesAttachmentId?: string | null;
+  notesAttachment?: Attachment | null;
+  orderIndex: number;
+};
 
 type LectureResponse = {
   lecture: Lecture;
@@ -201,6 +210,9 @@ export default function WatchClient({ params }: { params: Promise<{ courseId: st
     return <div className="text-sm">Lecture not found or access denied.</div>;
   }
 
+  const notesId = lecture.lecture.notesAttachmentId ?? null;
+  const resourceAttachments = (attachments ?? []).filter((a) => a.id !== notesId);
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <div className="space-y-4">
@@ -266,6 +278,23 @@ export default function WatchClient({ params }: { params: Promise<{ courseId: st
                 </div>
               </div>
             ) : null}
+
+            {lecture.lecture.notesAttachment ? (
+              <div className="mt-4">
+                <div className="text-sm font-semibold">Notes file</div>
+                <button
+                  type="button"
+                  onClick={() => downloadAttachment(lecture.lecture.notesAttachment!.id).catch(() => null)}
+                  className="mt-2 w-full rounded-xl border border-[hsl(var(--border))] p-3 text-left text-sm transition hover:bg-[hsl(var(--muted))]"
+                >
+                  <div className="font-medium">{lecture.lecture.notesAttachment.title}</div>
+                  <div className="mt-1 text-xs text-[hsl(var(--muted-fg))]">
+                    {lecture.lecture.notesAttachment.mimeType}
+                    {lecture.lecture.notesAttachment.sizeBytes ? ` • ${Math.round(lecture.lecture.notesAttachment.sizeBytes / 1024)} KB` : ''}
+                  </div>
+                </button>
+              </div>
+            ) : null}
           </div>
           </CardBody>
         </Card>
@@ -307,11 +336,11 @@ export default function WatchClient({ params }: { params: Promise<{ courseId: st
             <CardBody>
               {attachments === null ? (
                 <Skeleton className="h-10 w-full" />
-              ) : attachments.length === 0 ? (
+              ) : resourceAttachments.length === 0 ? (
                 <div className="text-sm text-[hsl(var(--muted-fg))]">No attachments for this lecture.</div>
               ) : (
                 <div className="space-y-2">
-                  {attachments.map((a) => (
+                  {resourceAttachments.map((a) => (
                     <button
                       key={a.id}
                       type="button"

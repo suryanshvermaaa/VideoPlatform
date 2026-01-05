@@ -118,6 +118,7 @@ model Lecture {
   title       String
   description String
   notesMd     String?
+  notesAttachmentId String? @unique
   orderIndex  Int
   videoKey    String
   storageProviderId String?
@@ -128,6 +129,7 @@ model Lecture {
   storageProvider StorageProvider? @relation(fields: [storageProviderId], references: [id], onDelete: SetNull)
   progress VideoProgress[]
   attachments Attachment[]
+  notesAttachment Attachment? @relation("LectureNotesAttachment", fields: [notesAttachmentId], references: [id], onDelete: SetNull)
 
   @@unique([courseId, orderIndex])
   @@index([courseId])
@@ -148,6 +150,7 @@ model Attachment {
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lecture Lecture? @relation(fields: [lectureId], references: [id], onDelete: Cascade)
   storageProvider StorageProvider? @relation(fields: [storageProviderId], references: [id], onDelete: SetNull)
+  notesForLecture Lecture? @relation("LectureNotesAttachment")
 
   @@index([courseId])
   @@index([lectureId])

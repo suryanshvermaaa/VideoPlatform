@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validateBody } from '../middleware/validate.js';
 import { prisma } from '../lib/prisma.js';
+import { signStreamUrl } from '../lib/r2.js';
 import { HttpError } from '../utils/errors.js';
 
 const router = Router();
@@ -128,6 +129,27 @@ router.delete(
 
     await prisma.attachment.delete({ where: { id: req.params.id } });
     res.json({ ok: true });
+  })
+);
+
+router.get(
+  '/:id/download-url',
+  asyncHandler(async (req, res) => {
+    const attachment = await prisma.attachment.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, fileKey: true, storageProviderId: true }
+    });
+
+    if (!attachment) throw new HttpError(404, 'Attachment not found');
+
+    const expiresInSeconds = 5 * 60;
+    const url = await signStreamUrl({
+      key: attachment.fileKey,
+      providerId: attachment.storageProviderId ?? null,
+      expiresInSeconds
+    });
+
+    res.json({ url, expiresInSeconds });
   })
 );
 

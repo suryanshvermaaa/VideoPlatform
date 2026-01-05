@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button, Card, CardBody, CardHeader, Input, Skeleton, Textarea } from '@/components/ui';
 
-type Course = { id: string; title: string; description: string; thumbnailKey?: string | null; createdAt: string };
+type Course = { id: string; title: string; description: string; thumbnailKey?: string | null; priceInrPaise: number; createdAt: string };
 
 type CourseDetail = Course & { lectures: Array<{ id: string; title: string; description: string; orderIndex: number }> };
 
@@ -20,6 +20,17 @@ type Attachment = {
   sizeBytes?: number | null;
   lectureId?: string | null;
   createdAt: string;
+};
+
+type AdminLectureDetail = {
+  id: string;
+  courseId: string;
+  title: string;
+  description: string;
+  notesMd?: string | null;
+  notesAttachmentId?: string | null;
+  notesAttachment?: { id: string; title: string; mimeType: string; sizeBytes?: number | null; createdAt: string } | null;
+  orderIndex: number;
 };
 
 type StorageProvider = {
@@ -57,6 +68,11 @@ export default function CoursesAdminClient() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [createPriceInr, setCreatePriceInr] = useState('0');
+
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editPriceInr, setEditPriceInr] = useState('0');
 
   const [lectureTitle, setLectureTitle] = useState('');
   const [lectureDesc, setLectureDesc] = useState('');
@@ -65,6 +81,8 @@ export default function CoursesAdminClient() {
 
   const [notesLectureId, setNotesLectureId] = useState('');
   const [notesMd, setNotesMd] = useState('');
+  const [notesAttachment, setNotesAttachment] = useState<AdminLectureDetail['notesAttachment']>(null);
+  const [notesFile, setNotesFile] = useState<File | null>(null);
 
   const [courseAttachments, setCourseAttachments] = useState<Attachment[] | null>(null);
   const [lectureAttachments, setLectureAttachments] = useState<Attachment[] | null>(null);
@@ -151,6 +169,19 @@ export default function CoursesAdminClient() {
   }, [selectedId]);
 
   useEffect(() => {
+    if (!detail) return;
+    setEditTitle(detail.title);
+    setEditDescription(detail.description);
+    setEditPriceInr((detail.priceInrPaise / 100).toFixed(2));
+  }, [detail?.id]);
+
+  function inrToPaise(value: string) {
+    const n = Number.parseFloat(value);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.round(n * 100);
+  }
+
+  useEffect(() => {
     if (!attLectureId) {
       setLectureAttachments(null);
       return;
@@ -166,12 +197,34 @@ export default function CoursesAdminClient() {
       const r = await fetch('/api/admin/courses', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title, description })
+        body: JSON.stringify({ title, description, priceInrPaise: inrToPaise(createPriceInr) })
       });
       if (!r.ok) throw new Error('Failed to create course');
       setTitle('');
       setDescription('');
+      setCreatePriceInr('0');
       await loadCourses();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateCourse(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedId) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/admin/courses/${selectedId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title: editTitle, description: editDescription, priceInrPaise: inrToPaise(editPriceInr) })
+      });
+      if (!r.ok) throw new Error('Failed to update course');
+      await loadCourses();
+      await loadCourse(selectedId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -460,6 +513,121 @@ export default function CoursesAdminClient() {
     }
   }
 
+  async function loadAdminLecture(lectureId: string) {
+    const r = await fetch(`/api/admin/lectures/${lectureId}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('Failed to load lecture');
+    const data = (await r.json()) as { lecture: AdminLectureDetail };
+    setNotesMd(data.lecture.notesMd ?? '');
+    setNotesAttachment(data.lecture.notesAttachment ?? null);
+  }
+
+  useEffect(() => {
+    if (!notesLectureId) {
+      setNotesMd('');
+      setNotesAttachment(null);
+      setNotesFile(null);
+      return;
+    }
+    loadAdminLecture(notesLectureId).catch(() => {
+      setNotesMd('');
+      setNotesAttachment(null);
+    });
+  }, [notesLectureId]);
+
+  async function uploadNotesFile() {
+    if (!selectedId) return;
+    if (!notesLectureId) return;
+    if (!notesFile) {
+      setError('Select a notes file');
+      return;
+    }
+
+    setError(null);
+    setBusy(true);
+    try {
+      const key = `attachments/${selectedId}/${notesLectureId}/notes_${Date.now()}_${notesFile.name}`;
+
+      const presign = await fetch('/api/admin/r2/presign-upload', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ key, contentType: notesFile.type || 'application/octet-stream', providerId: providerId || null })
+      });
+      if (!presign.ok) throw new Error('Failed to get upload URL');
+      const { url } = (await presign.json()) as { url: string };
+
+      const put = await fetch(url, {
+        method: 'PUT',
+        headers: { 'content-type': notesFile.type || 'application/octet-stream' },
+        body: notesFile
+      });
+      if (!put.ok) {
+        const t = await put.text().catch(() => '');
+        throw new Error(`Upload failed (${put.status})${t ? `: ${t.slice(0, 300)}` : ''}`);
+      }
+
+      const create = await fetch(`/api/admin/attachments/lectures/${notesLectureId}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: `Notes file: ${notesFile.name}`,
+          fileKey: key,
+          mimeType: notesFile.type || 'application/octet-stream',
+          sizeBytes: notesFile.size,
+          storageProviderId: providerId || null
+        })
+      });
+      if (!create.ok) throw new Error('Failed to create notes attachment');
+      const created = (await create.json()) as { attachment: { id: string } };
+
+      const patch = await fetch(`/api/admin/lectures/${notesLectureId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ notesAttachmentId: created.attachment.id })
+      });
+      if (!patch.ok) throw new Error('Failed to link notes file');
+
+      setNotesFile(null);
+      await loadAdminLecture(notesLectureId);
+      await loadLectureAttachments(notesLectureId).catch(() => null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function previewNotesFile() {
+    if (!notesAttachment?.id) return;
+    const r = await fetch(`/api/admin/attachments/${notesAttachment.id}/download-url`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('Failed to get download URL');
+    const data = (await r.json()) as { url: string };
+    window.open(data.url, '_blank', 'noopener,noreferrer');
+  }
+
+  async function clearNotesFile() {
+    if (!notesLectureId || !notesAttachment?.id) return;
+    if (!confirm('Remove notes file for this lecture?')) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const patch = await fetch(`/api/admin/lectures/${notesLectureId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ notesAttachmentId: null })
+      });
+      if (!patch.ok) throw new Error('Failed to unlink notes file');
+
+      await fetch(`/api/admin/attachments/${notesAttachment.id}`, { method: 'DELETE' }).catch(() => null);
+      setNotesAttachment(null);
+      await loadAdminLecture(notesLectureId);
+      await loadLectureAttachments(notesLectureId).catch(() => null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
       <div className="space-y-4">
@@ -562,6 +730,10 @@ export default function CoursesAdminClient() {
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
               </div>
               <div>
+                <label className="mb-1 block text-sm">Price (INR)</label>
+                <Input type="number" inputMode="decimal" min={0} step="0.01" value={createPriceInr} onChange={(e) => setCreatePriceInr(e.target.value)} required />
+              </div>
+              <div>
                 <label className="mb-1 block text-sm">Description</label>
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} required />
               </div>
@@ -598,6 +770,7 @@ export default function CoursesAdminClient() {
                     }`}
                   >
                     <div className="font-medium">{c.title}</div>
+                    <div className="mt-1 text-xs text-[hsl(var(--muted-fg))]">₹{(c.priceInrPaise / 100).toFixed(2)}</div>
                     <div className="mt-1 line-clamp-2 text-[hsl(var(--muted-fg))]">{c.description}</div>
                   </button>
                 ))}
@@ -616,6 +789,32 @@ export default function CoursesAdminClient() {
           </Card>
         ) : (
           <>
+            <Card>
+              <CardHeader>
+                <div className="font-semibold">Edit course</div>
+              </CardHeader>
+              <CardBody>
+                <form onSubmit={updateCourse} className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-sm">Title</label>
+                    <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm">Price (INR)</label>
+                    <Input type="number" inputMode="decimal" min={0} step="0.01" value={editPriceInr} onChange={(e) => setEditPriceInr(e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm">Description</label>
+                    <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={4} required />
+                  </div>
+                  {error ? <div className="text-sm text-red-600">{error}</div> : null}
+                  <Button disabled={busy} className="w-full">
+                    {busy ? 'Saving…' : 'Save changes'}
+                  </Button>
+                </form>
+              </CardBody>
+            </Card>
+
             <Card>
               <CardHeader>
                 <div className="font-semibold">{detail.title}</div>
@@ -771,6 +970,47 @@ export default function CoursesAdminClient() {
                     </select>
                     <div className="mt-1 text-xs text-[hsl(var(--muted-fg))]">Notes are saved per lecture.</div>
                   </div>
+
+                  {notesAttachment ? (
+                    <div className="rounded-xl border border-[hsl(var(--border))] p-3 text-sm">
+                      <div className="font-medium">Notes file</div>
+                      <div className="mt-1 text-xs text-[hsl(var(--muted-fg))]">
+                        {notesAttachment.title} • {notesAttachment.mimeType}
+                        {notesAttachment.sizeBytes ? ` • ${Math.round(notesAttachment.sizeBytes / 1024)} KB` : ''}
+                      </div>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <Button type="button" disabled={busy} onClick={() => previewNotesFile().catch((e) => setError(e instanceof Error ? e.message : 'Failed'))}>
+                          Preview
+                        </Button>
+                        <Button type="button" disabled={busy} variant="ghost" onClick={() => clearNotesFile().catch(() => null)}>
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 block text-sm">Upload notes file (optional)</label>
+                      <input
+                        type="file"
+                        onChange={(e) => setNotesFile(e.target.files?.[0] ?? null)}
+                        className="w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-sm"
+                      />
+                      <div className="mt-1 text-xs text-[hsl(var(--muted-fg))]">Uses the selected storage provider above.</div>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Button
+                        type="button"
+                        disabled={busy || !notesLectureId || !notesFile}
+                        className="w-full sm:w-auto"
+                        onClick={() => uploadNotesFile().catch((err) => setError(err instanceof Error ? err.message : 'Failed'))}
+                      >
+                        {busy ? 'Uploading…' : 'Upload notes file'}
+                      </Button>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="mb-1 block text-sm">Notes (Markdown)</label>
                     <Textarea value={notesMd} onChange={(e) => setNotesMd(e.target.value)} rows={6} placeholder="### Key points\n- ..." />

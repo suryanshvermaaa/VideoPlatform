@@ -28,6 +28,13 @@ router.get(
     const userId = req.user!.id;
     const lecture = await requireLectureAccess(userId, req.params.lectureId);
 
+    const notesAttachment = lecture.notesAttachmentId
+      ? await prisma.attachment.findUnique({
+          where: { id: lecture.notesAttachmentId },
+          select: { id: true, title: true, mimeType: true, sizeBytes: true, createdAt: true }
+        })
+      : null;
+
     const progress = await prisma.videoProgress.findUnique({
       where: { userId_lectureId: { userId, lectureId: lecture.id } },
       select: { progressPct: true, updatedAt: true }
@@ -40,6 +47,8 @@ router.get(
         title: lecture.title,
         description: lecture.description,
         notesMd: lecture.notesMd,
+        notesAttachmentId: lecture.notesAttachmentId,
+        notesAttachment,
         orderIndex: lecture.orderIndex
       },
       progress: progress ?? { progressPct: 0, updatedAt: null }

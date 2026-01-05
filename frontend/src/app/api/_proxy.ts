@@ -42,17 +42,34 @@ export async function proxyToBackend(req: Request, path: string, init?: RequestI
   const access = cookieStore.get(ACCESS_COOKIE)?.value;
   const refresh = cookieStore.get(REFRESH_COOKIE)?.value;
 
-  const headers = new Headers(init?.headers);
+  const method = (init?.method ?? req.method).toUpperCase();
+
+  // Forward incoming headers by default (e.g. content-type), allow init to override.
+  const headers = new Headers(req.headers);
+  for (const [k, v] of new Headers(init?.headers).entries()) {
+    headers.set(k, v);
+  }
+
+  // Buffer the body once so we can retry after token refresh.
+  let forwardBody: BodyInit | undefined = init?.body as any;
+  if (forwardBody === undefined && method !== 'GET' && method !== 'HEAD') {
+    const buf = await req.arrayBuffer();
+    if (buf.byteLength > 0) forwardBody = buf;
+  }
   if (access) headers.set('authorization', `Bearer ${access}`);
   if (refresh) headers.set('cookie', `${REFRESH_COOKIE}=${refresh}`);
+
+  // These headers should not be forwarded as-is.
+  headers.delete('host');
+  headers.delete('content-length');
 
   const doFetch = (token?: string) => {
     const h = new Headers(headers);
     if (token) h.set('authorization', `Bearer ${token}`);
     return fetch(backendUrl(path), {
-      method: init?.method ?? req.method,
+      method,
       headers: h,
-      body: init?.body,
+      body: forwardBody,
       cache: 'no-store'
     });
   };

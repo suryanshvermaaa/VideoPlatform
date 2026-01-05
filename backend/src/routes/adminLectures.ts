@@ -8,6 +8,30 @@ import { HttpError } from '../utils/errors.js';
 
 const router = Router();
 
+router.get(
+  '/lectures/:lectureId',
+  asyncHandler(async (req, res) => {
+    const lecture = await prisma.lecture.findUnique({
+      where: { id: req.params.lectureId },
+      select: {
+        id: true,
+        courseId: true,
+        title: true,
+        description: true,
+        notesMd: true,
+        notesAttachmentId: true,
+        orderIndex: true,
+        videoKey: true,
+        storageProviderId: true,
+        notesAttachment: { select: { id: true, title: true, mimeType: true, sizeBytes: true, createdAt: true } }
+      }
+    });
+
+    if (!lecture) throw new HttpError(404, 'Lecture not found');
+    res.json({ lecture });
+  })
+);
+
 // Create lecture for a course
 router.post(
   '/courses/:courseId/lectures',
@@ -50,6 +74,7 @@ router.patch(
         title: z.string().min(1).optional(),
         description: z.string().min(1).optional(),
         notesMd: z.string().optional().nullable(),
+        notesAttachmentId: z.string().min(1).optional().nullable(),
         orderIndex: z.coerce.number().int().nonnegative().optional(),
         videoKey: z.string().min(1).optional(),
         storageProviderId: z.string().min(1).optional().nullable()
@@ -64,6 +89,7 @@ router.patch(
       title?: string;
       description?: string;
       notesMd?: string | null;
+      notesAttachmentId?: string | null;
       orderIndex?: number;
       videoKey?: string;
       storageProviderId?: string | null;
@@ -75,11 +101,12 @@ router.patch(
         title: body.title,
         description: body.description,
         notesMd: body.notesMd === undefined ? undefined : body.notesMd,
+        notesAttachmentId: body.notesAttachmentId === undefined ? undefined : body.notesAttachmentId,
         orderIndex: body.orderIndex,
         videoKey: body.videoKey,
         storageProviderId: body.storageProviderId
       },
-      select: { id: true, courseId: true, title: true, description: true, notesMd: true, orderIndex: true }
+      select: { id: true, courseId: true, title: true, description: true, notesMd: true, notesAttachmentId: true, orderIndex: true }
     });
 
     res.json({ lecture });

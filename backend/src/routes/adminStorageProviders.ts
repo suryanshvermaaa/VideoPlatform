@@ -4,17 +4,14 @@ import { z } from 'zod';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { validateBody } from '../middleware/validate.js';
 import { prisma } from '../lib/prisma.js';
-import { env } from '../config/env.js';
 import { encryptSecret } from '../lib/cryptoSecret.js';
+import { getStorageProvidersEncKeyMaterial } from '../lib/storageProvidersEncKey.js';
 import { HttpError } from '../utils/errors.js';
 
 const router = Router();
 
 function requireEncKey() {
-  if (!env.STORAGE_PROVIDERS_ENC_KEY) {
-    throw new HttpError(500, 'STORAGE_PROVIDERS_ENC_KEY is not set');
-  }
-  return env.STORAGE_PROVIDERS_ENC_KEY;
+  return getStorageProvidersEncKeyMaterial();
 }
 
 router.get(
